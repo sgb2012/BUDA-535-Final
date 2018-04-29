@@ -1,0 +1,182 @@
+---
+title: "BUDA 535 Final"
+author: "Jordon Wolfram +Ivonne Wardell + Scott Branham"
+date: "April 28, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+### Problem 3 (30 Points)
+*Throughout the homework in this course you have analyzed a data set to predict the knowledge of employees at a company based on a survey and questionnaire.  You have been asked to use different methods on this data, but now it is time to formalize the results.  Present a concise write up where you describe the method of how you define knowledge (you may define it anyway you choose but please defend it), and the best prediction model you have found for it.  Describe any limitations of your model, and what you think a "good" prediction is.  You can mention the methods you have tried and include them in the .Rmd file, but do not show them when it knits.  To do this use the `include=FALSE` argument in the chunk heading.  Look at this .Rmd below for an example. Note, you may change what you did in your homework if you feel it will result in a better analysis! *
+
+```{r include=FALSE}
+#install.packages("glmnet")
+library(glmnet)
+library(nnet)
+library(caret)
+#install.packages("rda")
+library(rda)
+#install.packages("stringr")
+library(stringr)
+library(dplyr)
+library(ggplot2) 
+library(tidyr)
+library(readr)
+library(ISLR)
+library(rpart)
+library(rpart.plot)
+```
+
+We were given a file that contains the results of a questionare that was given to 156 employees at a major company.  Two experts sat in a room asked each employee to define a process or a term, then gave a score of 1 to 5.  These processes were also categorized as questions that would be considered technical for a field versus common questions that everyone should know.
+
+On top of this, the file contains 23 demographic insights about each employee.  These are listed below:
+```{r}
+QDat<- read.csv("C:\\Users\\Jordon Wolfram\\Documents\\WVU\\BUDA 535 Data Mining\\buda535_q_data.csv")
+names(QDat[,3:26])
+```
+
+Our goal as data analysists was to gain an understanding of this employee data and provide insights into their level of "Knowledge".  In the steps below, we first summarize the question data into an overall score.  This provides insight into which employees ranked highest on the question scores.  Being that the questions were divided into Technical vs Common scores though, we want to define knowledge further into quadrants:
+
+low_tech_low_over: Employees with low (negative) difference in their technical vs common score AND low overall score
+low_tech_high_over: Employees with low (negative) difference in their technical vs common score AND high overall score
+high_tech_high_over: Employees with high difference in their technical vs common score AND high overall score
+high_tech_low_over: Employees with high difference in their technical vs common score AND low overall score
+
+We chose this method because it can highlight not only the employees with a high overall score, but also those who have a high technical knowledge.  While we do not understand the full intention that the compny has for this data, we believe that this can help in the decision-making process for what employees are potentially the most valuable and also what positions employees are most qualified for.  The method for this selection is below:
+
+
+```{r}
+#Trim down to just the question data
+QDat2<-QDat[,-(1:26)]
+
+#Sum all of the questions per employee into a overall score
+over_score<-apply(QDat2,1,sum) 
+
+#Scale the data
+QDat3<-apply(QDat2,2,scale)
+m1<-prcomp(QDat3)
+sum(m1$rotation[,1]<=0)
+
+#Create and View the Quadrants
+OverScore=QDat3%*%m1$rotation[,1]
+Diff=QDat3%*%m1$rotation[,2]
+plot(OverScore~Diff)
+abline(h=0,col=3)
+abline(v=0,col=4)
+
+#Create a new variable "classification" for the quadrants
+QDat$classification<-rep("low_tech_low_over",dim(QDat)[1])             #Employees with low (negative) difference in their technical vs common score AND low overall score
+QDat$classification[OverScore<=0 & Diff>=0]="low_tech_high_over"       #Employees with low (negative) difference in their technical vs common score AND high overall score
+QDat$classification[OverScore>0 & Diff>=0]="high_tech_high_over"       #Employees with high difference in their technical vs common score AND high overall score
+QDat$classification[OverScore>0 & Diff<0]="high_tech_low_over"         #Employees with high difference in their technical vs common score AND low overall score
+
+#Add bank in the data demographics
+QDatClass<-cbind(QDat[,(3:26)],QDat$classification)
+names(QDatClass)[25]="classification"
+head(QDatClass)
+
+#Verify that four classifications were made
+unique(QDatClass$classification)
+```
+
+Classifying an employees knowledge is an important step.  We wanted to take it further through and start digging into the demographic data that was provided for each employee and see what insights this contained into what classification quadrant they would fall into.  Before doing that, we want to look at a summary breakdown of the classifications to give us a starting point.
+
+```{r}
+table(QDatClass$classification)
+#Prediction Error that you would get by simply choosing the most common classification of low_tech_low_over.
+1 - (max(table(QDatClass$classification))/nrow(QDatClass))
+
+```
+So if we were to not consider demographic information and simply classify all employees as low_tech_low_over, we would be wrong 60% of the time.  Important too, we would miss the benefit of identifying the other three classifications which can help with employee insight and placement.
+
+By looking at the demographic data surrounding each employee, we hope to improve this 60% error and to help classify what classification an employee falls into and what are the most important demographics that create this.
+
+A lot of different models and methods were run on the data.  We found that while it is simplistic, the recursive partitioning method created an ideal model for predicting the classification of an employee.  The code is below:
+```{r}
+#Select 56 of the 156 observations to be the test data and use the remaining 100 observations as the training data.
+set.seed(2018)
+Samp1<-sample(1:156,56)
+
+#Run the Rpart model
+r1 <- rpart(classification ~ .,QDatClass[-Samp1,], method="class")
+
+#Visualize the tree
+plot(r1)
+text(r1, use.n = TRUE)
+```
+
+This tree plot breaks down the most important partitions and pathways in determining employee classification.  Next, let's look at how this improved on the original prediction error.
+```{r}
+preds1=predict(r1,newdata=QDatClass[Samp1,],type="class")
+Res1 <-table(preds1,QDatClass$classification[Samp1])
+Res1
+
+#Prediction Error
+(sum(Res1)-sum(diag(Res1)))/length(Samp1)
+```
+
+We were able to improve the prediction error and reduce it to 50%.  While this is far from perfection, it shows some good trends. By analyzing the data, we not only created these classification quandrants that apply to current employees, we also accessed what demographics can affect that.
+
+This information could be applied during the hiring process of new employees to see the likelyhood of what classification they would fall into.  Therefore, if the company is looking to higher an employee that it likely to fall into the high_tech_high_over class of knowledge, they can target the demographics that apply.
+
+
+Again, it can't be stated enough that many models and methods were run on this data and so there are comparative models and data that can be provided via .rmd for those that would like to dig into the analysis further.
+
+
+
+
+LASSO MODEL BACKUP:
+```{r include=FALSE}
+#set seed for reproducibility 
+set.seed(2000)
+
+#split the data 70/30 into train and test 
+trainIndex <- createDataPartition(QDatClass$age, p = 0.7, list = FALSE, times = 1)
+
+QDatClassTrain <- QDatClass[trainIndex,]
+QDatClassTest <- QDatClass[-trainIndex,]
+
+x1_train <- data.matrix(QDatClassTrain[,(1:24)])
+y1_train <- QDatClassTrain$classification
+
+x1_test <- data.matrix(QDatClassTest[,(1:24)])
+y1_test <- QDatClassTest$classification
+
+
+count <- seq(0.1, 0.9, 0.05)
+```
+
+
+Use R to find the ideal Alpha and Lamba tuning parameter and then run the model.
+```{r include=FALSE}
+search <- foreach(i = count, .combine = rbind) %dopar% {
+  cv <- cv.glmnet(x1_train, y1_train, family = "multinomial", type.measure = "deviance", parallel = TRUE, alpha = i)
+  data.frame(cvm = cv$cvm[cv$lambda == cv$lambda.min], lambda.min = cv$lambda.min, alpha = i)
+}
+
+
+CV <- search[search$cvm == min(search$cvm), ]
+
+# Chosen Alpha:
+CV$alpha
+#Chosen Lamba
+CV$lambda.min
+
+#Elastic Net Model
+Mod <- glmnet(x1_train,y1_train, family = "multinomial", alpha = CV$alpha, lambda = CV$lambda.min)
+coef(Mod)
+```
+
+Run Model Predictions
+IMPORTANT - the table shows that it only predicts 2 out of the four classifications
+```{r include=FALSE}
+preds <-predict(Mod, s = CV$lambda.1se, newx = x1_test, type = "class")
+
+postResample(pred = preds, obs = y1_test)
+
+table(preds,y1_test)
+```
