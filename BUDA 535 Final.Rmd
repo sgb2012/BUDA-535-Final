@@ -8,6 +8,20 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+### Purpose
+
+This is the Spring 2018 Group Final Project for BUDA 535.  This final consists of 4 
+questions and is worth 100 points.  This final is expected to be done in teams.
+
+### Problem 1 (20 points)
+
+In this course most of our focus has been on creating and evaluating models based on prediction. This question focuses on our experience with classification models.  We have learned many techniques such as LDA, QDA, multinomial logistic regression, tree based methods alng with many others.  Compare and contrast these methods.  You should also comment on when you expect these methods to work well and out preform others.  Describe the perceived benefits and disadvantages of each of these methods.  For example a few points you could discuss are do they make assumptions ?
+Can they be easily explained? For sake of completeness assume you are selecting model using a train test procedure with a validation data set.  
+
+
+### Problem 2 (20 Points)
+
+Compare and contrast K-means and hierarchical clustering. What are the possible different variations of hierarchical clustering (discuss at least 3), and how do they relate to K-means?  Are there drawbacks to these methods and if so what are they?  How do you select the number of clusters in each method? Explain the process to select clusters.
 
 
 ### Problem 3 (30 Points)
@@ -180,3 +194,26 @@ postResample(pred = preds, obs = y1_test)
 
 table(preds,y1_test)
 ```
+
+
+### Problem 4 (30 Points)
+
+For this problem we will use the `MinnLand` data in the `alr4` package. I want to predict a categorical response on whether the `acreprice` is above or below the mean.  The data set we will use for this problem is as follows:
+
+```{r}
+library(alr4)
+data("MinnLand")
+ML<-na.omit(MinnLand)
+ML$class<-rep("Above",dim(ML)[1])
+ML$class[which(ML$acrePrice<=mean(ML$acrePrice))]="Below"
+names(ML)
+ML=ML[,-1]
+ML$class=as.factor(ML$class)
+names(ML)
+table(ML$class)
+set.seed(616)
+test<-sample(1:8770,2770)
+```
+The code above creates a `class` variables in the `ML` data set that defines whether the `acreprice` is above or below the mean.  It also removes all `NA`'s from the data, and then removes `acreprice`.  I've removed this to make modeling easier, as you do not want it for these methods.  All other variables in this data set are fair to use 
+
+Build a predictive model using the `ML` data where your response is class.  Give any insights you can on the models you built, while only presenting the model you consider the best.  Treat the set `test` as a validation set for this model to compare final predictions on. Discuss any results that you may find interesting about what variables are drivers and how they effect the prediction.  Discuss any disadvantages your model may have over other you fit, while justifying why you chose it. Just as in problem 3 include your code for all models you build, but do not present the results unless they are relevant.  It is OK to explain your process in your text without printing the code, just make sure the code is in the .Rmd. HINT:  An interesting result may be to look at the misclassified points and comment on the value of these properties, does your model over or undervalue based on the predictions. 
