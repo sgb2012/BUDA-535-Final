@@ -1,7 +1,7 @@
 ---
 title: "BUDA 535 Final"
-author: "Jordon Wolfram +Ivonne Wardell + Scott Branham"
-date: "April 28, 2018"
+author: "Jordon Wolfram + Ivone Wardell + Scott Branham"
+date: "May 4, 2018"
 output: html_document
 ---
 
@@ -25,7 +25,7 @@ Compare and contrast K-means and hierarchical clustering. What are the possible 
 
 
 ### Problem 3 (30 Points)
-*Throughout the homework in this course you have analyzed a data set to predict the knowledge of employees at a company based on a survey and questionnaire.  You have been asked to use different methods on this data, but now it is time to formalize the results.  Present a concise write up where you describe the method of how you define knowledge (you may define it anyway you choose but please defend it), and the best prediction model you have found for it.  Describe any limitations of your model, and what you think a "good" prediction is.  You can mention the methods you have tried and include them in the .Rmd file, but do not show them when it knits.  To do this use the `include=FALSE` argument in the chunk heading.  Look at this .Rmd below for an example. Note, you may change what you did in your homework if you feel it will result in a better analysis! *
+*Throughout the homework in this course you have analyzed a data set to predict the knowledge of employees at a company based on a survey and questionnaire.  You have been asked to use different methods on this data, but now it is time to formalize the results.  Present a concise write up where you describe the method of how you define knowledge (you may define it anyway you choose but please defend it), and the best prediction model you have found for it.  Describe any limitations of your model, and what you think a "good" prediction is.  You can mention the methods you have tried and include them in the .Rmd file, but do not show them when it knits.  To do this use the `include=FALSE` argument in the chunk heading.  Look at this .Rmd below for an example. Note, you may change what you did in your homework if you feel it will result in a better analysis!*
 
 ```{r include=FALSE}
 #install.packages("glmnet")
@@ -198,9 +198,35 @@ table(preds,y1_test)
 
 ### Problem 4 (30 Points)
 
-For this problem we will use the `MinnLand` data in the `alr4` package. I want to predict a categorical response on whether the `acreprice` is above or below the mean.  The data set we will use for this problem is as follows:
+*For this problem we will use the `MinnLand` data in the `alr4` package. I want to predict a categorical response on whether the `acreprice` is above or below the mean.  The data set we will use for this problem is as follows.*
+
+*The code creates a `class` variable in the `ML` data set that defines whether the `acreprice` is above or below the mean.  It also removes all `NA`'s from the data, and then removes `acreprice`.  I've removed this to make modeling easier, as you do not want it for these methods.  All other variables in this data set are fair to use.* 
+
+*Build a predictive model using the `ML` data where your response is class.  Give any insights you can on the models you built, while only presenting the model you consider the best.  Treat the set `test` as a validation set for this model to compare final predictions on. Discuss any results that you may find interesting about what variables are drivers and how they effect the prediction.  Discuss any disadvantages your model may have over other you fit, while justifying why you chose it. Just as in problem 3 include your code for all models you build, but do not present the results unless they are relevant.  It is OK to explain your process in your text without printing the code, just make sure the code is in the .Rmd. HINT:  An interesting result may be to look at the misclassified points and comment on the value of these properties, does your model over or undervalue based on the predictions.* 
+
+```{r include=FALSE}
+install.packages("glmnet")
+library(glmnet)
+library(nnet)
+install.packages("caret")
+library(caret)
+library(ISLR)
+install.packages("rda")
+library(rda)
+install.packages("stringr")
+library(stringr)
+library(dplyr)
+library(ggplot2) 
+library(tidyr)
+install.packages("readr")
+library(readr)
+library(rpart)
+library(rpart.plot)
+```
 
 ```{r}
+#
+install.packages("alr4")
 library(alr4)
 data("MinnLand")
 ML<-na.omit(MinnLand)
@@ -214,6 +240,43 @@ table(ML$class)
 set.seed(616)
 test<-sample(1:8770,2770)
 ```
-The code above creates a `class` variables in the `ML` data set that defines whether the `acreprice` is above or below the mean.  It also removes all `NA`'s from the data, and then removes `acreprice`.  I've removed this to make modeling easier, as you do not want it for these methods.  All other variables in this data set are fair to use 
+```{r}
+summary(ML)
+str(ML)
+dim(ML)
+```
 
-Build a predictive model using the `ML` data where your response is class.  Give any insights you can on the models you built, while only presenting the model you consider the best.  Treat the set `test` as a validation set for this model to compare final predictions on. Discuss any results that you may find interesting about what variables are drivers and how they effect the prediction.  Discuss any disadvantages your model may have over other you fit, while justifying why you chose it. Just as in problem 3 include your code for all models you build, but do not present the results unless they are relevant.  It is OK to explain your process in your text without printing the code, just make sure the code is in the .Rmd. HINT:  An interesting result may be to look at the misclassified points and comment on the value of these properties, does your model over or undervalue based on the predictions. 
+```{r}
+library(rpart)
+r1 <- rpart(class ~region, ML, method = "anova")
+plot(r1, margin=.1)
+text(r1)
+```
+
+```{r}
+plot(r1, compress=TRUE, uniform=TRUE, branch=0.4, margin=.1)
+text(r1)
+```
+
+```{r}
+r2<-rpart(class~.,ML,method="anova")
+plot(r2,compress=TRUE,uniform=TRUE, branch=.4, margin=.1)
+text(r2)
+printcp(r2)
+```
+
+```{r}
+r3<-rpart(class~.,ML,method="anova",cp=.001)
+printcp(r3)
+plotcp(r3)
+```
+
+```{r}
+set.seed(223)
+Test=sample(1:dim(ML)[1],1000)
+r3Test<-rpart(class~.,ML[-Test,],method="anova",cp=.001)
+r3Preds<-predict(r3Test,newdata=ML[Test,])
+Error<-ML$class[Test]-r3Preds
+sum(Error^2)/1000
+```
+
