@@ -257,6 +257,7 @@ str(ML)
 dim(ML)
 ```
 
+#R-Part & Classification Trees
 ```{r}
 library(rpart)
 r1 <- rpart(class ~region, ML, method = "anova")
@@ -282,6 +283,7 @@ printcp(r3)
 plotcp(r3)
 ```
 
+#GLM Net Model
 ```{r}
 set.seed(616)
 test<-sample(1:8770,2770)
@@ -300,7 +302,43 @@ nfolds=4,foldid=Folds,family="binomial")
 plot(CVTry)
 ```
 
+#Caret Model
 ```{r}
+library(caret)
+library(ISLR)
+library(glmnet)
+x=as.matrix(ML[,1:9])
+```
+
+```{r}
+v<-createFolds(test,k=5)
+length(v)
+names(v)
+```
+
+```{r}
+v1<-createFolds(test,k=5, returnTrain = TRUE)
+length(v1)
+names(v1)
+```
+
+```{r}
+fitControl <- trainControl(method = "cv",
+                           number = 10)
+```
+
+```{r}
+library(ISLR)
+install.packages("e1071")
+library(e1071)
+library(caret)
+m1<-train(class~.,data=ML,method="glmnet",trControl=fitControl,family="binomial")
+m1
+```
+
+
+
+
 
 
 
