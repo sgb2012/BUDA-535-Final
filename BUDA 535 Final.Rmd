@@ -236,7 +236,6 @@ library(rpart)
 ```
 
 ```{r}
-#
 install.packages("alr4")
 library(alr4)
 data("MinnLand")
@@ -292,7 +291,7 @@ Folds=rep(4,length(train))
 Folds[1:1500]=1
 Folds[1501:3000]=2
 Folds[3001:4500]=3
-
+install.packages("glmnet")
 library(glmnet)
 library(nnet)
 x1=lm(as.numeric(class)~.,data=ML[train,],x=TRUE)$x
@@ -334,6 +333,26 @@ library(e1071)
 library(caret)
 m1<-train(class~.,data=ML,method="glmnet",trControl=fitControl,family="binomial")
 m1
+```
+
+```{r}
+library(caret)
+preds<-predict(m1,newdata = ML[-train,])
+confusionMatrix(data=preds, reference =ML[-train,]$class)
+```
+
+
+```{r}
+glm_g<-expand.grid(lambda=seq(0.1,10,1),alpha=seq(0,1,.025))
+```
+
+```{r}
+m2<-train(class~.,data=ML,method="glmnet",trControl=fitControl,family="binomial", tuneGrid=glm_g)
+```
+
+```{r}
+preds2<-predict(m2,newdata = test)
+confusionMatrix(data=preds2, reference =test$class)
 ```
 
 
